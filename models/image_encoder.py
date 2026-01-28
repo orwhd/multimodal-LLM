@@ -1,0 +1,29 @@
+from __future__ import annotations
+
+import torch
+import torch.nn as nn
+import torchvision.models as tvm
+
+
+class ImageEncoder(nn.Module):
+    """
+    ResNet-based image encoder (pretrained on ImageNet).
+    """
+
+    def __init__(self, backbone: str = "resnet50", pretrained: bool = True) -> None:
+        super().__init__()
+        if backbone == "resnet50":
+            m = tvm.resnet50(weights=tvm.ResNet50_Weights.IMAGENET1K_V2 if pretrained else None)
+            self.feature_dim = 2048
+        elif backbone == "resnet18":
+            m = tvm.resnet18(weights=tvm.ResNet18_Weights.IMAGENET1K_V1 if pretrained else None)
+            self.feature_dim = 512
+        else:
+            raise ValueError(f"Unsupported backbone: {backbone}")
+
+        self.backbone = nn.Sequential(*list(m.children())[:-1])
+
+    def forward(self, pixel_values: torch.Tensor) -> torch.Tensor:
+        feat = self.backbone(pixel_values)
+        feat = feat.flatten(1)
+        return feat
