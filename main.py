@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
+
 import json
 from pathlib import Path
 from typing import Dict, List, Tuple

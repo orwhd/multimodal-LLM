@@ -77,6 +77,7 @@ def train_one_experiment(
     scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps, num_training_steps=total_steps)
 
     model.to(device)
+    scaler = torch.cuda.amp.GradScaler()
 
     best_f1 = -1.0
     best_path = out_dir / "best.pt"
@@ -90,18 +91,23 @@ def train_one_experiment(
             batch = move_to_device(batch, device)
             optimizer.zero_grad(set_to_none=True)
 
-            logits = model(
-                input_ids=batch["input_ids"],
-                attention_mask=batch["attention_mask"],
-                pixel_values=batch["pixel_values"],
-            )
-            loss = criterion(logits, batch["labels"])
-            loss.backward()
+            with torch.cuda.amp.autocast(enabled=device.type == 'cuda'):
+                logits = model(
+                    input_ids=batch["input_ids"],
+                    attention_mask=batch["attention_mask"],
+                    pixel_values=batch["pixel_values"],
+                )
+                loss = criterion(logits, batch["labels"])
+
+
+            scaler.scale(loss).backward()
 
             if grad_clip_norm and grad_clip_norm > 0:
+                scaler.unscale_(optimizer)
                 torch.nn.utils.clip_grad_norm_(params, grad_clip_norm)
 
-            optimizer.step()
+            scaler.step(optimizer)
+            scaler.update()
             scheduler.step()
 
             total_loss += loss.item()
