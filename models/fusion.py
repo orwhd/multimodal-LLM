@@ -11,8 +11,18 @@ class LateFusionHead(nn.Module):
 
     def __init__(self, text_dim: int, image_dim: int, proj_dim: int, num_labels: int, dropout: float = 0.2) -> None:
         super().__init__()
-        self.text_proj = nn.Linear(text_dim, proj_dim)
-        self.image_proj = nn.Linear(image_dim, proj_dim)
+        self.text_proj = nn.Sequential(
+            nn.Linear(text_dim, proj_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(proj_dim, proj_dim)
+        )
+        self.image_proj = nn.Sequential(
+            nn.Linear(image_dim, proj_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(proj_dim, proj_dim)
+        )
         
         self.classifier = nn.Sequential(
             nn.Linear(proj_dim * 2, proj_dim),
