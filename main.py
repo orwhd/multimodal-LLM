@@ -229,7 +229,8 @@ def main():
         test_pairs = read_guid_label_file(str(test_file))
 
         tokenizer = AutoTokenizer.from_pretrained(config["text_model_name"])
-        tf_eval = build_transforms(int(config["image_size"]), train=False)
+        anyres = config.get("anyres", False)
+        tf_eval = build_transforms(int(config["image_size"]), train=False, anyres=anyres)
 
         ds_test = MultimodalSentimentDataset(
             test_pairs,
@@ -260,6 +261,7 @@ def main():
             dropout=float(config["dropout"]),
             modality="multimodal",
             freeze_backbones=False,
+            anyres=anyres,
         )
         model.load_state_dict(torch.load(ckpt, map_location=device))
 
