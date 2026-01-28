@@ -15,9 +15,13 @@ from models.mm_model import MultimodalSentimentModel
 from trainer import train_one_experiment, evaluate, predict
 from utils.io import read_guid_label_file
 from utils.seed import set_seed
+from utils.transforms import AnyResTransform
 
 
-def build_transforms(image_size: int, train: bool) -> transforms.Compose:
+def build_transforms(image_size: int, train: bool, anyres: bool = False) -> transforms.Compose | AnyResTransform:
+    if anyres:
+        return AnyResTransform(image_size, train=train)
+
     if train:
         return transforms.Compose(
             [
@@ -104,8 +108,9 @@ def run_experiment(config: Dict, modality: str, ckpt_name: str) -> str:
     )
 
     tokenizer = AutoTokenizer.from_pretrained(config["text_model_name"])
-    tf_train = build_transforms(int(config["image_size"]), train=True)
-    tf_eval = build_transforms(int(config["image_size"]), train=False)
+    anyres = config.get("anyres", False)
+    tf_train = build_transforms(int(config["image_size"]), train=True, anyres=anyres)
+    tf_eval = build_transforms(int(config["image_size"]), train=False, anyres=anyres)
 
     ds_train = MultimodalSentimentDataset(
         train_list,
@@ -154,6 +159,7 @@ def run_experiment(config: Dict, modality: str, ckpt_name: str) -> str:
         dropout=float(config["dropout"]),
         modality=modality,
         freeze_backbones=bool(config.get("freeze_backbones", False)),
+        anyres=anyres,
     )
 
     exp_dir = Path(config["output_dir"]) / ckpt_name

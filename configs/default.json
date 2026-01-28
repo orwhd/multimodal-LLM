@@ -24,7 +24,8 @@
   "mode": "train",
   "data_root": "./dataset",
   "data_dir": "",
-  "output_dir": "./outputs/run4",
+  "output_dir": "./outputs/run5",
+  "anyres": true,
   "cpu": false,
   "ckpt_path": "",
   "output_test_file": ""

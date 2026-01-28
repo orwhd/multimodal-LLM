@@ -10,8 +10,9 @@ class ImageEncoder(nn.Module):
     Image encoder: supports ResNet and ViT backbones.
     """
 
-    def __init__(self, backbone: str = "resnet50", pretrained: bool = True) -> None:
+    def __init__(self, backbone: str = "resnet50", pretrained: bool = True, anyres: bool = False) -> None:
         super().__init__()
+        self.anyres = anyres
         if backbone == "resnet50":
             m = tvm.resnet50(weights=tvm.ResNet50_Weights.IMAGENET1K_V2 if pretrained else None)
             self.feature_dim = 2048
@@ -28,13 +29,26 @@ class ImageEncoder(nn.Module):
         else:
             raise ValueError(f"Unsupported backbone: {backbone}")
         
+        if self.anyres:
+            self.feature_dim *= 5
+
         self.backbone_name = backbone
 
     def forward(self, pixel_values: torch.Tensor) -> torch.Tensor:
+        if self.anyres:
+            if pixel_values.dim() == 5:
+                b, n, c, h, w = pixel_values.shape
+                pixel_values = pixel_values.view(b * n, c, h, w)
+            else:
+                raise ValueError(f"Expected 5D input for AnyRes, got {pixel_values.shape}")
+
         if self.backbone_name.startswith("vit"):
             feat = self.model(pixel_values)
-            return feat
         else:
             feat = self.backbone(pixel_values)
             feat = feat.flatten(1)
-            return feat
+            
+        if self.anyres:
+            feat = feat.reshape(b, -1)
+            
+        return feat

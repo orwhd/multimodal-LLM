@@ -23,12 +23,13 @@ class MultimodalSentimentModel(nn.Module):
         dropout: float = 0.2,
         modality: Modality = "multimodal",
         freeze_backbones: bool = False,
+        anyres: bool = False,
     ) -> None:
         super().__init__()
         self.modality: Modality = modality
 
         self.text_encoder = TextEncoder(text_model_name)
-        self.image_encoder = ImageEncoder(backbone=image_backbone, pretrained=True)
+        self.image_encoder = ImageEncoder(backbone=image_backbone, pretrained=True, anyres=anyres)
 
         if freeze_backbones:
             for p in self.text_encoder.parameters():
