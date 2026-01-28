@@ -43,6 +43,13 @@ def find_image_file(data_dir: str, guid: str) -> Path:
     raise FileNotFoundError(f"Cannot find image file for guid={guid} under {data_dir}")
 
 
+def clean_text(text: str) -> str:
+    text = text.replace("\n", " ").replace("\r", " ")
+    text = text.replace("#", "")
+    return text.strip()
+
+
 def load_text(path: Path) -> str:
     with open(path, "r", encoding="utf-8", errors="ignore") as f:
-        return f.read().strip()
+        text = f.read()
+    return clean_text(text)
