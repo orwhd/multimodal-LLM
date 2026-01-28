@@ -148,7 +148,7 @@ def run_experiment(config: Dict, modality: str, ckpt_name: str) -> str:
 
     model = MultimodalSentimentModel(
         text_model_name=config["text_model_name"],
-        image_backbone="resnet50",
+        image_backbone=config.get("image_backbone", "resnet50"),
         proj_dim=int(config["proj_dim"]),
         num_labels=int(config["num_labels"]),
         dropout=float(config["dropout"]),
@@ -248,7 +248,7 @@ def main():
             raise ValueError("No checkpoint provided. Use ckpt_path in config or run training first.")
         model = MultimodalSentimentModel(
             text_model_name=config["text_model_name"],
-            image_backbone="resnet50",
+            image_backbone=config.get("image_backbone", "resnet50"),
             proj_dim=int(config["proj_dim"]),
             num_labels=int(config["num_labels"]),
             dropout=float(config["dropout"]),

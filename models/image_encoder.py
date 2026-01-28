@@ -7,7 +7,7 @@ import torchvision.models as tvm
 
 class ImageEncoder(nn.Module):
     """
-    ResNet-based image encoder (pretrained on ImageNet).
+    Image encoder: supports ResNet and ViT backbones.
     """
 
     def __init__(self, backbone: str = "resnet50", pretrained: bool = True) -> None:
@@ -15,15 +15,26 @@ class ImageEncoder(nn.Module):
         if backbone == "resnet50":
             m = tvm.resnet50(weights=tvm.ResNet50_Weights.IMAGENET1K_V2 if pretrained else None)
             self.feature_dim = 2048
+            self.backbone = nn.Sequential(*list(m.children())[:-1])
         elif backbone == "resnet18":
             m = tvm.resnet18(weights=tvm.ResNet18_Weights.IMAGENET1K_V1 if pretrained else None)
             self.feature_dim = 512
+            self.backbone = nn.Sequential(*list(m.children())[:-1])
+        elif backbone == "vit_b_16":
+            weights = tvm.ViT_B_16_Weights.IMAGENET1K_V1 if pretrained else None
+            self.model = tvm.vit_b_16(weights=weights)
+            self.feature_dim = 768
+            self.model.heads = nn.Identity()
         else:
             raise ValueError(f"Unsupported backbone: {backbone}")
-
-        self.backbone = nn.Sequential(*list(m.children())[:-1])
+        
+        self.backbone_name = backbone
 
     def forward(self, pixel_values: torch.Tensor) -> torch.Tensor:
-        feat = self.backbone(pixel_values)
-        feat = feat.flatten(1)
-        return feat
+        if self.backbone_name.startswith("vit"):
+            feat = self.model(pixel_values)
+            return feat
+        else:
+            feat = self.backbone(pixel_values)
+            feat = feat.flatten(1)
+            return feat
