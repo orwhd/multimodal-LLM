@@ -59,24 +59,19 @@ def train_one_experiment(
     grad_clip_norm: float,
     target_names: List[str],
 ) -> str:
-    """
-    Train and save the best checkpoint by macro-F1.
-    Return path to the best checkpoint.
-    """
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     criterion = nn.CrossEntropyLoss()
 
-    # Optimizer: only trainable params
+    # Optimizer
     params = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.AdamW(params, lr=lr, weight_decay=weight_decay)
-
-    total_steps = epochs * len(train_loader)
-    warmup_steps = int(total_steps * warmup_ratio)
-    scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps, num_training_steps=total_steps)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=2)
 
     model.to(device)
+    
+    # AMP
     scaler = torch.cuda.amp.GradScaler()
 
     best_f1 = -1.0
@@ -99,7 +94,7 @@ def train_one_experiment(
                 )
                 loss = criterion(logits, batch["labels"])
 
-
+            # Scale loss
             scaler.scale(loss).backward()
 
             if grad_clip_norm and grad_clip_norm > 0:
@@ -108,8 +103,6 @@ def train_one_experiment(
 
             scaler.step(optimizer)
             scaler.update()
-            scheduler.step()
-
             total_loss += loss.item()
             pbar.set_postfix(loss=loss.item())
 
@@ -117,10 +110,10 @@ def train_one_experiment(
 
         val_metrics, val_report = evaluate(model, val_loader, device, target_names=target_names)
         
-        # Print epoch summary
+        scheduler.step(val_metrics['macro_f1'])
+
         print(f"Epoch {epoch}/{epochs} | Train Loss: {avg_loss:.4f} | Val F1: {val_metrics['macro_f1']:.4f} | Val Acc: {val_metrics['acc']:.4f}")
 
-        # Update history
         epoch_stats = {
             "epoch": epoch,
             "train_loss": avg_loss,
@@ -128,11 +121,9 @@ def train_one_experiment(
         }
         history.append(epoch_stats)
         
-        # Save complete history
         with open(out_dir / "training_history.json", "w", encoding="utf-8") as f:
             json.dump(history, f, ensure_ascii=False, indent=2)
 
-        # Save epoch log (keep existing behavior)
         (out_dir / "logs").mkdir(exist_ok=True)
         with open(out_dir / "logs" / f"epoch_{epoch}.json", "w", encoding="utf-8") as f:
             json.dump(
@@ -146,7 +137,6 @@ def train_one_experiment(
         if val_metrics["macro_f1"] > best_f1:
             best_f1 = val_metrics["macro_f1"]
             torch.save(model.state_dict(), best_path)
-            # Save report for best
             with open(out_dir / "best_report.txt", "w", encoding="utf-8") as f:
                 f.write(val_report)
 

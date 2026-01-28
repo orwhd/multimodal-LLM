@@ -20,7 +20,21 @@ def compute_metrics(y_true: List[int], y_pred: List[int]) -> Metrics:
     y_true_np = np.array(y_true, dtype=int)
     y_pred_np = np.array(y_pred, dtype=int)
     acc = accuracy_score(y_true_np, y_pred_np)
-    macro_f1 = f1_score(y_true_np, y_pred_np, average="macro", zero_division=0)
+
+    labels = np.unique(y_true_np)
+    f1s = []
+    for label in labels:
+        tp = np.sum((y_true_np == label) & (y_pred_np == label))
+        fp = np.sum((y_true_np != label) & (y_pred_np == label))
+        fn = np.sum((y_true_np == label) & (y_pred_np != label))
+        
+        precision = (tp + 1) / (tp + fp + 1)
+        recall = (tp + 1) / (tp + fn + 1)
+        f1 = 2 * (precision * recall) / (precision + recall)
+        f1s.append(f1)
+    
+    macro_f1 = np.mean(f1s) if len(f1s) > 0 else 0.0
+    
     return Metrics(acc=acc, macro_f1=macro_f1)
 
 
